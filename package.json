@@ -1,0 +1,15 @@
+{
+  "name": "sqlite-d1",
+  "version": "0.0.1",
+  "description": "Ergonamic interface for writing sqlite queries against cloudflare d1",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "@amnrst",
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20221111.1",
+    "typescript": "^4.9.4"
+  }
+}
