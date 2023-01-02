@@ -3,6 +3,10 @@
 This library provides a minimal and flexible interface for cloudflare d1.  
 The `CURD` operations are supported.
 
+```bash
+npm install sqlite-cloudflare-d1
+```
+
 ## insert
 Inserts a single row into and returns the inserted row.
 
