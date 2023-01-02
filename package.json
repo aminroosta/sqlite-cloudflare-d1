@@ -1,8 +1,13 @@
 {
   "name": "sqlite-cloudflare-d1",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Ergonomic interface for writing sqlite queries against cloudflare d1",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types":  "dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aminroosta/sqlite-cloudflare-d1"
+  },
   "scripts": {
     "build": "tsc  --declaration --outDir ..//dist/",
     "test": "echo \"Error: no test specified\" && exit 1"
