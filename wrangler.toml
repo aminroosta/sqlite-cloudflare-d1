@@ -1,3 +1,10 @@
 name = "sqlite-d1"
 compatibility_date = "2023-01-01"
+main = "src/test.ts"
+
+[[ d1_databases ]]
+binding = "db" # i.e. available in your Worker on env.db
+database_name = ""
+database_id = ""
+preview_database_id = ""
 
