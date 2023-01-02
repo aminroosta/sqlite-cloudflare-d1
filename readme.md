@@ -1,9 +1,9 @@
-### sqlite-cloudflare-d1
+# sqlite-cloudflare-d1
 
-This library provides a minimal (yet flexible) micro orm for cloudflare d1.
-The CURD operations are supported.
+This library provides a minimal and flexible interface for cloudflare d1.  
+The `CURD` operations are supported.
 
-#### insert
+## insert
 Inserts a single row into and returns the inserted row.
 
 Example:
@@ -15,17 +15,17 @@ insert(db, {
 // { id: 1, name: "bob", age: 30 }
 ```
 
-#### query
+## query
 Query database for one or more rows.
 See the last example on how to join tables.
 
-Example 1: returns every row in albums table.
+Example 1: Returns every row in albums table.
 ```
 await query(db, { from: "albums" });
 // [{id: 1, title: "Carry On"}, ...]
 ```
 
-Example 2: returns every album that starts with "Carry".
+Example 2: Returns every album that starts with "Carry".
 ```
 await query(db, {
   from: "albums",
@@ -66,7 +66,7 @@ await query(db, {
 });
 ```
 
-#### update
+## update
 Update the matching rows to the given values.
 Similar to other functions, update returns the affected rows.
 
@@ -80,7 +80,7 @@ await update(db, {
 // [{id: 1, title: "Carry On!"}]
 ```
 
-#### remove
+## remove
 Remove one or more rows from a table, and returns the deleted rows.
 
 Example 1: Deletes every row that matches the condition.
@@ -92,7 +92,7 @@ await remove(db, {
 // [{id: 1, title: "Carry On"}]
 ```
 
-#### More examples of the "where:" clause
+### More examples of the "where:" clause
 
 Example 1: The keys are expressions and they reference the values by "?".
            Object keys are "AND"ed together.
@@ -106,7 +106,7 @@ Example 1: The keys are expressions and they reference the values by "?".
  // { sql: "name = ? AND age > ?", values: ["bob", 31] }
 ```
 
-Example 2: arrays represent an "OR".
+Example 2: Arrays represent an "OR".
 ```
  query({ ...
    [

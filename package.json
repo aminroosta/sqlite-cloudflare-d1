@@ -4,6 +4,7 @@
   "description": "Ergonamic interface for writing sqlite queries against cloudflare d1",
   "main": "index.js",
   "scripts": {
+    "build": "tsc  --declaration --outDir ./dist/",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "@amnrst",
