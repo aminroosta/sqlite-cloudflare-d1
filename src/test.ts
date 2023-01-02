@@ -79,13 +79,13 @@ function test_condition_to_sql() {
 }
 
 function test_columns_to_sql() {
-  assert(lib._columns_to_sql("people.*"), "people.*");
+  assert(lib._select_columns_to_sql("people.*"), "people.*");
   assert(
-    lib._columns_to_sql({ id: "id", "count(id)": "count" }),
+    lib._select_columns_to_sql({ id: "id", "count(id)": "count" }),
     "id, count(id) AS count"
   );
   assert(
-    lib._columns_to_sql(["id", "count(id) as count"]),
+    lib._select_columns_to_sql(["id", "count(id) as count"]),
     "id, count(id) as count"
   );
 }
@@ -151,6 +151,19 @@ async function test_remove(db: D1Database) {
   assert(result, [{ Name: name, Age: 31 }]);
 }
 
+async function test_update(db: D1Database) {
+  const name = randstr();
+  await lib.insert(db, { into: "men", data: { Name: name, Age: 20 } });
+
+  const result = await lib.update(db, {
+    table: "men",
+    set: { Age: 21 },
+    where: { Name: name },
+  });
+
+  assert(result, [{ Name: name, Age: 21 }]);
+}
+
 export default {
   async fetch(
     request: Request,
@@ -158,12 +171,13 @@ export default {
     ctx: ExecutionContext
   ): Promise<Response> {
     try {
-      // await test_insert(env.db);
-      // await test_insert_many(env.db);
-      // test_condition_to_sql();
-      // test_columns_to_sql();
-      // await test_query(env.db);
+      await test_insert(env.db);
+      await test_insert_many(env.db);
+      test_condition_to_sql();
+      test_columns_to_sql();
+      await test_query(env.db);
       await test_remove(env.db);
+      await test_update(env.db);
     } catch (error: any) {
       return new Response(`${error.message}\n`, { status: 200 });
     }

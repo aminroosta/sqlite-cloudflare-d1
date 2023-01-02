@@ -80,7 +80,7 @@ export function _condition_to_sql(condition: Condition | Condition[]): {
 
 // { id: 'id', count: 'count(id)' },
 // '*' | ['id', 'count(id) as count'],
-export function _columns_to_sql(
+export function _select_columns_to_sql(
   expr: Record<string, string> | string[] | string
 ) {
   if (Array.isArray(expr)) {
@@ -92,6 +92,14 @@ export function _columns_to_sql(
   return Object.entries(expr)
     .map(([key, value]) => (key == value ? key : `${key} AS ${value}`))
     .join(", ");
+}
+
+export function _update_columns_to_sql(expr: Record<string, string>) {
+  const sql = Object.keys(expr)
+    .map((key) => `${key} = ?`)
+    .join(", ");
+  const values = Object.values(expr);
+  return { sql, values };
 }
 
 export async function query(
@@ -112,7 +120,7 @@ export async function query(
 ) {
   const sql_: string[] = [];
   const values_: Value[] = [];
-  sql_.push("SELECT", _columns_to_sql(select), "FROM", from);
+  sql_.push("SELECT", _select_columns_to_sql(select), "FROM", from);
   if (where) {
     const { sql, values } = _condition_to_sql(where);
     sql_.push("WHERE", sql);
@@ -145,6 +153,38 @@ export async function remove(
   const sql_: string[] = [];
   const values_: Value[] = [];
   sql_.push("DELETE FROM", from);
+  if (where) {
+    const { sql, values } = _condition_to_sql(where);
+    sql_.push("WHERE", sql);
+    values_.push(...values);
+  }
+
+  sql_.push("RETURNING *");
+
+  const query_ = sql_.join(" ") + ";";
+
+  return await all(db, query_, values_);
+}
+
+export async function update(
+  db: D1Database,
+  {
+    table,
+    set,
+    where,
+  }: {
+    table: string;
+    set: Record<string, Value>;
+    where?: Condition | Condition[];
+  }
+) {
+  const sql_: string[] = [];
+  const values_: Value[] = [];
+  sql_.push("UPDATE", table);
+  const { sql, values } = _update_columns_to_sql(set);
+  sql_.push("SET", sql);
+  values_.push(...values);
+
   if (where) {
     const { sql, values } = _condition_to_sql(where);
     sql_.push("WHERE", sql);
