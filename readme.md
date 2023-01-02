@@ -20,13 +20,13 @@ Query database for one or more rows.
 See the last example on how to join tables.
 
 Example 1: Returns every row in albums table.
-```
+```js
 await query(db, { from: "albums" });
 // [{id: 1, title: "Carry On"}, ...]
 ```
 
 Example 2: Returns every album that starts with "Carry".
-```
+```js
 await query(db, {
   from: "albums",
   where: {
@@ -38,7 +38,7 @@ await query(db, {
 
 Example 3: A more complex query.
            Note that in "where" clauses objects mean "AND" and arrays mean "OR".
-```
+```js
 await query(db, {
   from: "albums",
   where: [
@@ -54,7 +54,7 @@ await query(db, {
 ```
 
 Example 4: A join example with select and group by.
-```
+```js
 await query(db, {
   select: {
     "a.Name": "Name",
@@ -71,7 +71,7 @@ Update the matching rows to the given values.
 Similar to other functions, update returns the affected rows.
 
 Example:
-```
+```js
 await update(db, {
  table: "albums",
  where: { title: "Carry On" },
@@ -84,7 +84,7 @@ await update(db, {
 Remove one or more rows from a table, and returns the deleted rows.
 
 Example 1: Deletes every row that matches the condition.
-```
+```js
 await remove(db, {
  from: "albums",
  where: { title: "Carry On" },
@@ -96,7 +96,7 @@ await remove(db, {
 
 Example 1: The keys are expressions and they reference the values by "?".
            Object keys are "AND"ed together.
-```
+```js
  query({ ...,
    where: {
      name: "bob",
@@ -107,7 +107,7 @@ Example 1: The keys are expressions and they reference the values by "?".
 ```
 
 Example 2: Arrays represent an "OR".
-```
+```js
  query({ ...
    [
      {
