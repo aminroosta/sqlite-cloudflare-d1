@@ -15,7 +15,7 @@
 		"lib": [
 			"es2021"
 		] /* Specify a set of bundled library declaration files that describe the target runtime environment. */,
-		"jsx": "react" /* Specify what JSX code is generated. */,
+		// "jsx": "react" /* Specify what JSX code is generated. */,
 		// "experimentalDecorators": true,                   /* Enable experimental support for TC39 stage 2 draft decorators. */
 		// "emitDecoratorMetadata": true,                    /* Emit design-type metadata for decorated declarations in source files. */
 		// "jsxFactory": "",                                 /* Specify the JSX factory function used when targeting React JSX emit, e.g. 'React.createElement' or 'h' */
@@ -34,8 +34,7 @@
 		// "rootDirs": [],                                   /* Allow multiple folders to be treated as one when resolving modules. */
 		// "typeRoots": [],                                  /* Specify multiple folders that act like `./node_modules/@types`. */
 		"types": [
-			"@cloudflare/workers-types",
-			"jest"
+			"@cloudflare/workers-types"
 		] /* Specify type package names to be included without being referenced in a source file. */,
 		// "allowUmdGlobalAccess": true,                     /* Allow accessing UMD globals from modules. */
 		"resolveJsonModule": true /* Enable importing .json files */,
@@ -54,7 +53,7 @@
 		// "outFile": "./",                                  /* Specify a file that bundles all outputs into one JavaScript file. If `declaration` is true, also designates a file that bundles all .d.ts output. */
 		// "outDir": "./",                                   /* Specify an output folder for all emitted files. */
 		// "removeComments": true,                           /* Disable emitting comments. */
-		"noEmit": true /* Disable emitting files from a compilation. */,
+		"noEmit": false /* Disable emitting files from a compilation. */,
 		// "importHelpers": true,                            /* Allow importing helper functions from tslib once per project, instead of including them per-file. */
 		// "importsNotUsedAsValues": "remove",               /* Specify emit/checking behavior for imports that are only used for types */
 		// "downlevelIteration": true,                       /* Emit more compliant, but verbose and less performant JavaScript for iteration. */

@@ -1,6 +1,6 @@
 export type Row = Record<string, string | number | null | ArrayBuffer>;
 export type Value = string | number | null | ArrayBuffer;
-type Condition = Record<string, Value>;
+export type Condition = Record<string, Value>;
 
 async function all(db: D1Database, query: string, values: Value[]) {
   try {
@@ -20,6 +20,18 @@ async function all(db: D1Database, query: string, values: Value[]) {
   }
 }
 
+/**!
+ * Inserts a single row into and returns the inserted row.
+ *
+ * Example:
+ * ```
+ * insert(db, { 
+ *   into: "users", 
+ *   data: { name: "bob", age: 30 }
+ * });
+ * // { id: 1, name: "bob", age: 30 }
+ * ```
+ */
 export async function insert(
   db: D1Database,
   { into, data }: { into: string; data: Row }
@@ -38,6 +50,23 @@ export async function insert(
     .first<Row>();
 }
 
+/**!
+ * Inserts multiple rows and returns the inserted rows.
+ *
+ * Example:
+ * ```
+ * insert(db, { 
+ *   into: "users", 
+ *   data: [
+ *     { name: "bob", age: 30 }
+ *     { name: "tom", age: 20 }
+ * });
+ * // [
+ * //   { id: 1, name: "bob", age: 30 },
+ * //   { id: 2, name: "tom", age: 20 }
+ * // ]
+ * ```
+ */
 export async function insertMany(
   db: D1Database,
   { into, data }: { into: string; data: Row[] }
@@ -56,8 +85,31 @@ export async function insertMany(
   return await all(db, query, values);
 }
 
-// { 'name = ?': "amin", 'age > ?': 31, }
-// [ { 'name = ?': "amin"}, { 'age > ?': 31} ]
+/**!
+ * Internal function, used to convert "where:" conditions into sql queries.
+ *
+ * Example 1: The keys are expressions and they reference the value by "?".
+ *            The keys are "AND"ed together.
+ * ```
+ *  _condition_to_sql({
+ *      name: "bob",
+ *      "age > ?": 31,
+ *  })
+ *  // { sql: "name = ? AND age > ?", values: ["bob", 31] }
+ * ```
+ * 
+ * Example 2: Use an array if you wan to "OR" the conditions.
+ * ```
+ *  _condition_to_sql([
+ *      {
+ *        "name LIKE ?": "Frank%",
+ *        "age > ?": 31,
+ *      },
+ *      { height: 181 },
+ *  ])
+ *  // { sql: "(name = ? AND age > ?) OR (height = ?)", values: ["Frank%", 31, 181] }
+ * ```
+ */
 export function _condition_to_sql(condition: Condition | Condition[]): {
   sql: string;
   values: Value[];
@@ -78,10 +130,29 @@ export function _condition_to_sql(condition: Condition | Condition[]): {
   return { sql, values };
 }
 
-// { id: 'id', count: 'count(id)' },
-// '*' | ['id', 'count(id) as count'],
+/**!
+ * Internal function, used to select multiple columns.
+ *
+ * Example 1: The keys are expressions that come before the "AS" keyword.
+ * ```
+ *  _select_columns_to_sql({
+ *      id: "id",
+ *      "count(id)": "count",
+ *  })
+ *  // "id, count(id) AS count"
+ * ```
+ * 
+ * Example 2: You can also use an array.
+ * ```
+ *  _select_columns_to_sql([
+ *     "id",
+ *     "count(id) as count"
+ *  ])
+ *  // "id, count(id) AS count"
+ * ```
+ */
 export function _select_columns_to_sql(
-  expr: Record<string, string> | string[] | string
+  expr: Record<string, string> | string[] | string | "*"
 ) {
   if (Array.isArray(expr)) {
     return expr.join(", ");
@@ -94,7 +165,7 @@ export function _select_columns_to_sql(
     .join(", ");
 }
 
-export function _update_columns_to_sql(expr: Record<string, string>) {
+export function _update_columns_to_sql(expr: Record<string, Value>) {
   const sql = Object.keys(expr)
     .map((key) => `${key} = ?`)
     .join(", ");
@@ -102,6 +173,57 @@ export function _update_columns_to_sql(expr: Record<string, string>) {
   return { sql, values };
 }
 
+/**!
+ * Query database for one or more rows.
+ * See the last example on how to join tables.
+ *
+ * Example 1: returns every row in albums table.
+ * ```
+ * await query(db, { from: "albums" });
+ * // [{id: 1, title: "Carry On"}, ...]
+ * ```
+ *
+ * Example 2: returns every album that starts with "Carry".
+ * ```
+ * await query(db, {
+ *   from: "albums",
+ *   where: {
+ *     "Title LIKE ?": "Carry%",
+ *   },
+ * });
+ * // [{id: 1, title: "Carry On"}]
+ * ```
+ *
+ * Example 3: A more complex query.
+ *            Note that in "where" clauses objects mean "AND" and arrays mean "OR".
+ * ```
+ * await query(db, {
+ *   from: "albums",
+ *   where: [
+ *     { Title: "Transmission" },
+ *     {
+ *       "Title LIKE ?": "%On",
+ *       "ArtistId > ?": 57,
+ *     },
+ *   ],
+ * });
+ * // This would effectively run the following query:
+ * // "SELECT * FROM albums WHERE (Title = ?) OR (Title LIKE ? AND ArtisID > ?)"
+ * ```
+ *
+ * Example 4: A join example with select and group by.
+ * ```
+ * await query(db, {
+ *   select: {
+ *     "a.Name": "Name",
+ *     "count(*)": "count",
+ *   },
+ *   from: "artists a join albums b on a.ArtistId = b.ArtistId",
+ *   group_by: "a.ArtistId",
+ *   having: { "count > ?": 12 },
+ * });
+ * ```
+ */
 export async function query(
   db: D1Database,
   {
@@ -140,6 +262,18 @@ export async function query(
   return await all(db, query_, values_);
 }
 
+/**!
+ * Remove one or more rows from a table, and returns the deleted rows.
+ *
+ * Example 1: Deletes every row that matches the condition.
+ * ```
+ * await remove(db, {
+ *  from: "albums",
+ *  where: { title: "Carry On" },
+ * });
+ * // [{id: 1, title: "Carry On"}]
+ * ```
+ */
 export async function remove(
   db: D1Database,
   {
@@ -166,6 +300,20 @@ export async function remove(
   return await all(db, query_, values_);
 }
 
+/**!
+ * Update the matching rows to the given values.
+ * Similar to other functions, update returns the affected rows.
+ *
+ * Example: 
+ * ```
+ * await update(db, {
+ *  table: "albums",
+ *  where: { title: "Carry On" },
+ *  set: { title: "Carry On!" },
+ * });
+ * // [{id: 1, title: "Carry On!"}]
+ * ```
+ */
 export async function update(
   db: D1Database,
   {
