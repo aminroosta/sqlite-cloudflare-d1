@@ -1,6 +1,24 @@
 export type Row = Record<string, string | number | null | ArrayBuffer>;
 export type Value = string | number | null | ArrayBuffer;
 
+async function all(db: D1Database, query: string, values: Value[]) {
+  try {
+    const { results, success, error } = await db
+      .prepare(query)
+      .bind(...values)
+      .all();
+
+    if (!success) {
+      throw new Error(error + "\n" + query);
+    }
+
+    return results as Row[];
+  } catch (error: any) {
+    error.message += "\n" + query;
+    throw error;
+  }
+}
+
 export async function create({
   db,
   table,
@@ -44,14 +62,83 @@ export async function createMany({
 
   const query = `INSERT INTO ${table} (${keys_}) VALUES ${values_} RETURNING *`;
 
-  const { results, success, error } = await db
-    .prepare(query)
-    .bind(...values)
-    .all();
+  return await all(db, query, values);
+}
 
-  if (!success) {
-    throw new Error(error);
+type Condition = Record<string, Value>;
+
+// { 'name = ?': "amin", 'age > ?': 31, }
+// [ { 'name = ?': "amin"}, { 'age > ?': 31} ]
+export function condition_to_sql(condition: Condition | Condition[]): {
+  sql: string;
+  values: Value[];
+} {
+  if (Array.isArray(condition)) {
+    const results = condition.map((c) => condition_to_sql(c));
+    const sql = results.map(({ sql }) => "(" + sql + ")").join(" OR ");
+    const values = results.map(({ values }) => values).flat();
+    return { sql, values };
   }
 
-  return results as Row[];
+  const values = Object.values(condition as Condition);
+  const keys = Object.keys(condition).map((key) =>
+    key.includes("?") ? key : key + " = ?"
+  );
+
+  const sql = keys.join(" AND ");
+  return { sql, values };
+}
+
+// { id: 'id', count: 'count(id)' },
+// '*' | ['id', 'count(id) as count'],
+export function columns_to_sql(
+  expr: Record<string, string> | string[] | string
+) {
+  if (Array.isArray(expr)) {
+    return expr.join(", ");
+  }
+  if (typeof expr == "string") {
+    return expr;
+  }
+  return Object.entries(expr)
+    .map(([key, value]) => (key == value ? key : `${key} AS ${value}`))
+    .join(", ");
+}
+
+export async function query(
+  db: D1Database,
+  {
+    select = "*",
+    from,
+    where,
+    group_by,
+    having,
+  }: {
+    select?: string | string[] | Record<string, string>;
+    from: string;
+    group_by?: string;
+    where?: Condition | Condition[];
+    having?: Condition | Condition[];
+  }
+) {
+  const sql_: string[] = [];
+  const values_: Value[] = [];
+  sql_.push("SELECT", columns_to_sql(select), "FROM", from);
+  if (where) {
+    const { sql, values } = condition_to_sql(where);
+    sql_.push("WHERE", sql);
+    values_.push(...values);
+  }
+  if (group_by) {
+    sql_.push("GROUP BY", group_by);
+    if (having) {
+      const { sql, values } = condition_to_sql(having);
+      sql_.push("HAVING", sql);
+      values_.push(...values);
+    }
+  }
+
+  const query_ = sql_.join(" ") + ";";
+
+  return await all(db, query_, values_);
 }

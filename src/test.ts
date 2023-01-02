@@ -20,6 +20,11 @@ function remove_ids(object: any) {
   return remove(object);
 }
 function assert(left: any, right: any) {
+  if (typeof left != "object" || typeof right != "object") {
+    if (left != right) {
+      throw new Error(`${left} != ${right}`);
+    }
+  }
   let left_ = JSON.stringify(remove_ids(left), null, 2);
   let right_ = JSON.stringify(remove_ids(right), null, 2);
   if (left_ != right_) {
@@ -28,8 +33,8 @@ function assert(left: any, right: any) {
 }
 async function test_select_star(db: D1Database) {
   const { results } = await db
-    .prepare("SELECT * FROM albums WHERE Title = ?")
-    .bind("Frank")
+    .prepare("SELECT * FROM albums WHERE Title Like ?")
+    .bind("%ank")
     .all();
 
   assert(results, [{ AlbumId: 322, Title: "Frank", ArtistId: 252 }]);
@@ -62,6 +67,90 @@ async function test_create_many(db: D1Database) {
   assert(result, data);
 }
 
+function test_condition_to_sql() {
+  assert(
+    lib.condition_to_sql({
+      "name = ?": "amin",
+      "age > ?": 31,
+    }),
+    { sql: "name = ? AND age > ?", values: ["amin", 31] }
+  );
+
+  assert(
+    lib.condition_to_sql([
+      {
+        "name = ?": "amin",
+        "age > ?": 31,
+      },
+      { height: 181 },
+    ]),
+    { sql: "(name = ? AND age > ?) OR (height = ?)", values: ["amin", 31, 181] }
+  );
+}
+
+function test_columns_to_sql() {
+  assert(lib.columns_to_sql("people.*"), "people.*");
+  assert(
+    lib.columns_to_sql({ id: "id", "count(id)": "count" }),
+    "id, count(id) AS count"
+  );
+  assert(
+    lib.columns_to_sql(["id", "count(id) as count"]),
+    "id, count(id) as count"
+  );
+}
+
+async function test_query(db: D1Database) {
+  let result = await lib.query(db, {
+    from: "albums",
+  });
+  assert(result.length > 100, true);
+
+  result = await lib.query(db, {
+    from: "albums",
+    where: {
+      "Title LIKE ?": "Carry%",
+    },
+  });
+  assert(result, [{ Title: "Carry On" }]);
+
+  result = await lib.query(db, {
+    from: "albums",
+    where: {
+      "Title LIKE ?": "%On",
+      ArtistId: 58,
+    },
+  });
+  assert(result, [{ Title: "The Battle Rages On" }]);
+
+  result = await lib.query(db, {
+    from: "albums",
+    where: [
+      { Title: "Transmission" },
+      {
+        "Title LIKE ?": "%On",
+        "ArtistId > ?": 57,
+        "ArtistId < ?": 59,
+      },
+    ],
+  });
+  assert(result, [{ Title: "The Battle Rages On" }, { Title: "Transmission" }]);
+
+  result = await lib.query(db, {
+    select: {
+      "a.Name": "Name",
+      "count(*)": "count",
+    },
+    from: "artists a join albums b on a.ArtistId = b.ArtistId",
+    group_by: "a.ArtistId",
+    having: { "count > ?": 12 },
+  });
+  assert(result, [
+    { Name: "Led Zeppelin", count: 14 },
+    { Name: "Iron Maiden", count: 21 },
+  ]);
+}
+
 export default {
   async fetch(
     request: Request,
@@ -72,6 +161,9 @@ export default {
       // await test_select_star(env.db);
       // await test_create(env.db);
       // await test_create_many(env.db);
+      // test_condition_to_sql();
+      // test_columns_to_sql();
+      await test_query(env.db);
     } catch (error: any) {
       return new Response(`${error.message}\n`, { status: 200 });
     }
