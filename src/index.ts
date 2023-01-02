@@ -1,5 +1,6 @@
 export type Row = Record<string, string | number | null | ArrayBuffer>;
 export type Value = string | number | null | ArrayBuffer;
+type Condition = Record<string, Value>;
 
 async function all(db: D1Database, query: string, values: Value[]) {
   try {
@@ -19,22 +20,17 @@ async function all(db: D1Database, query: string, values: Value[]) {
   }
 }
 
-export async function create({
-  db,
-  table,
-  data,
-}: {
-  db: D1Database;
-  table: string;
-  data: Row;
-}) {
+export async function insert(
+  db: D1Database,
+  { into, data }: { into: string; data: Row }
+) {
   const keys = Object.keys(data);
   const values = Object.values(data);
 
   const keys_ = keys.join(",");
   const values_ = values.map((_) => "?").join(",");
 
-  const query = `INSERT INTO ${table} (${keys_}) VALUES (${values_}) RETURNING *;`;
+  const query = `INSERT INTO ${into} (${keys_}) VALUES (${values_}) RETURNING *;`;
 
   return await db
     .prepare(query)
@@ -42,15 +38,10 @@ export async function create({
     .first<Row>();
 }
 
-export async function createMany({
-  db,
-  table,
-  data,
-}: {
-  db: D1Database;
-  table: string;
-  data: Row[];
-}) {
+export async function insertMany(
+  db: D1Database,
+  { into, data }: { into: string; data: Row[] }
+) {
   const keys = Object.keys(data[0]);
   const keys_ = keys.join(",");
 
@@ -60,21 +51,19 @@ export async function createMany({
   const values: Value[] = [];
   data.forEach((row) => values.push(...keys.map((key) => row[key])));
 
-  const query = `INSERT INTO ${table} (${keys_}) VALUES ${values_} RETURNING *`;
+  const query = `INSERT INTO ${into} (${keys_}) VALUES ${values_} RETURNING *`;
 
   return await all(db, query, values);
 }
 
-type Condition = Record<string, Value>;
-
 // { 'name = ?': "amin", 'age > ?': 31, }
 // [ { 'name = ?': "amin"}, { 'age > ?': 31} ]
-export function condition_to_sql(condition: Condition | Condition[]): {
+export function _condition_to_sql(condition: Condition | Condition[]): {
   sql: string;
   values: Value[];
 } {
   if (Array.isArray(condition)) {
-    const results = condition.map((c) => condition_to_sql(c));
+    const results = condition.map((c) => _condition_to_sql(c));
     const sql = results.map(({ sql }) => "(" + sql + ")").join(" OR ");
     const values = results.map(({ values }) => values).flat();
     return { sql, values };
@@ -91,7 +80,7 @@ export function condition_to_sql(condition: Condition | Condition[]): {
 
 // { id: 'id', count: 'count(id)' },
 // '*' | ['id', 'count(id) as count'],
-export function columns_to_sql(
+export function _columns_to_sql(
   expr: Record<string, string> | string[] | string
 ) {
   if (Array.isArray(expr)) {
@@ -123,20 +112,46 @@ export async function query(
 ) {
   const sql_: string[] = [];
   const values_: Value[] = [];
-  sql_.push("SELECT", columns_to_sql(select), "FROM", from);
+  sql_.push("SELECT", _columns_to_sql(select), "FROM", from);
   if (where) {
-    const { sql, values } = condition_to_sql(where);
+    const { sql, values } = _condition_to_sql(where);
     sql_.push("WHERE", sql);
     values_.push(...values);
   }
   if (group_by) {
     sql_.push("GROUP BY", group_by);
     if (having) {
-      const { sql, values } = condition_to_sql(having);
+      const { sql, values } = _condition_to_sql(having);
       sql_.push("HAVING", sql);
       values_.push(...values);
     }
   }
+
+  const query_ = sql_.join(" ") + ";";
+
+  return await all(db, query_, values_);
+}
+
+export async function remove(
+  db: D1Database,
+  {
+    from,
+    where,
+  }: {
+    from: string;
+    where?: Condition | Condition[];
+  }
+) {
+  const sql_: string[] = [];
+  const values_: Value[] = [];
+  sql_.push("DELETE FROM", from);
+  if (where) {
+    const { sql, values } = _condition_to_sql(where);
+    sql_.push("WHERE", sql);
+    values_.push(...values);
+  }
+
+  sql_.push("RETURNING *");
 
   const query_ = sql_.join(" ") + ";";
 

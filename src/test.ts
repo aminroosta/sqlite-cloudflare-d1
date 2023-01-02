@@ -31,36 +31,26 @@ function assert(left: any, right: any) {
     throw new Error(`${left_} != ${right_}`);
   }
 }
-async function test_select_star(db: D1Database) {
-  const { results } = await db
-    .prepare("SELECT * FROM albums WHERE Title Like ?")
-    .bind("%ank")
-    .all();
 
-  assert(results, [{ AlbumId: 322, Title: "Frank", ArtistId: 252 }]);
-}
-
-async function test_create(db: D1Database) {
+async function test_insert(db: D1Database) {
   const name = randstr();
 
-  const result = await lib.create({
-    db: db,
-    table: "artists",
+  const result = await lib.insert(db, {
+    into: "artists",
     data: { Name: name },
   });
 
   assert(result, { Name: name });
 }
 
-async function test_create_many(db: D1Database) {
+async function test_insert_many(db: D1Database) {
   const data = [
     { Name: randstr(), Age: 31 },
     { Name: randstr(), Age: 32 },
   ];
 
-  const result = await lib.createMany({
-    db: db,
-    table: "men",
+  const result = await lib.insertMany(db, {
+    into: "men",
     data,
   });
 
@@ -69,7 +59,7 @@ async function test_create_many(db: D1Database) {
 
 function test_condition_to_sql() {
   assert(
-    lib.condition_to_sql({
+    lib._condition_to_sql({
       "name = ?": "amin",
       "age > ?": 31,
     }),
@@ -77,7 +67,7 @@ function test_condition_to_sql() {
   );
 
   assert(
-    lib.condition_to_sql([
+    lib._condition_to_sql([
       {
         "name = ?": "amin",
         "age > ?": 31,
@@ -89,13 +79,13 @@ function test_condition_to_sql() {
 }
 
 function test_columns_to_sql() {
-  assert(lib.columns_to_sql("people.*"), "people.*");
+  assert(lib._columns_to_sql("people.*"), "people.*");
   assert(
-    lib.columns_to_sql({ id: "id", "count(id)": "count" }),
+    lib._columns_to_sql({ id: "id", "count(id)": "count" }),
     "id, count(id) AS count"
   );
   assert(
-    lib.columns_to_sql(["id", "count(id) as count"]),
+    lib._columns_to_sql(["id", "count(id) as count"]),
     "id, count(id) as count"
   );
 }
@@ -151,6 +141,16 @@ async function test_query(db: D1Database) {
   ]);
 }
 
+async function test_remove(db: D1Database) {
+  const name = randstr();
+  await lib.insert(db, { into: "men", data: { name } });
+  const result = await lib.remove(db, {
+    from: "men",
+    where: { Name: name, Age: 31 },
+  });
+  assert(result, [{ Name: name, Age: 31 }]);
+}
+
 export default {
   async fetch(
     request: Request,
@@ -158,12 +158,12 @@ export default {
     ctx: ExecutionContext
   ): Promise<Response> {
     try {
-      // await test_select_star(env.db);
-      // await test_create(env.db);
-      // await test_create_many(env.db);
+      // await test_insert(env.db);
+      // await test_insert_many(env.db);
       // test_condition_to_sql();
       // test_columns_to_sql();
-      await test_query(env.db);
+      // await test_query(env.db);
+      await test_remove(env.db);
     } catch (error: any) {
       return new Response(`${error.message}\n`, { status: 200 });
     }
